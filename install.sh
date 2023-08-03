@@ -11,6 +11,12 @@ gen64() {
 	}
 	echo "$1:$(ip64):$(ip64):$(ip64):$(ip64)"
 }
+gen96() {
+    ip96() {
+        echo "${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}"
+    }
+    echo "$1:${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}:${ip96}:${ip96}:${ip96}"
+}
 install_3proxy() {
     echo "installing 3proxy"
     URL="https://raw.githubusercontent.com/ngochoaitn/multi_proxy_ipv6/main/3proxy-3proxy-0.8.6.tar.gz"
@@ -28,6 +34,7 @@ install_3proxy() {
 gen_3proxy() {
     cat <<EOF
 daemon
+log /usr/local/etc/3proxy/log_data D
 maxconn 1000
 nscache 65536
 timeouts 1 5 30 60 180 1800 15 60
@@ -63,7 +70,7 @@ upload_proxy() {
 }
 gen_data() {
     seq $FIRST_PORT $LAST_PORT | while read port; do
-        echo "usr$(random)/pass$(random)/$IP4/$port/$(gen64 $IP6)"
+        echo "usr$(random)/pass$(random)/$IP4/$port/$(gen96 $IP6)"
     done
 }
 
