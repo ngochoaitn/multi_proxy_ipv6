@@ -87,7 +87,7 @@ rotate_proxy() {
 }
 
 # Tự động xoay proxy sau mỗi 10 phút
-(crontab -l ; echo "*/10 * * * * ${WORKDIR}/rotate_proxy") | crontab -
+(crontab -l ; echo "0 0 * * * /đường/dẫn/thực/thi/rotate_3proxy.sh") | crontab -
 
 echo "installing apps"
 yum -y install gcc net-tools bsdtar zip >/dev/null
