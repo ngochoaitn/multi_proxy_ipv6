@@ -41,12 +41,7 @@ auth_ip_config() {
         echo "allow $allowed_ip"
     done
 }
-gen_ifconfig() {
-    echo "auth iponly"
-    while read -r allowed_ip; do
-        echo "allow $allowed_ip"
-    done < "${WORKDIR}/allowed_ips.txt"
-}
+
 # Function to generate 3proxy configuration
 gen_3proxy() {
     auth_ip_config
@@ -79,34 +74,6 @@ gen_data() {
     seq $FIRST_PORT $LAST_PORT | while read port; do
         echo "usr$(random)/pass$(random)/$IP4/$port/$(gen64 $IP6)"
     done
-}
-
-# Function to generate iptables rules
-gen_iptables() {
-    cat <<EOF
-        cat <<EOF
-    systemctl mask firewalld
-    systemctl enable iptables
-    systemctl stop firewalld
-    yum install iptables-services -y
-    systemctl enable iptables
-    systemctl start iptables
-    systemctl enable ip6tables
-    systemctl start ip6tables
-    echo "Thiết lập tường lửa...."
-}
-
-gen_iptables
-
-# Allow specific IP address in iptables
-iptables -I INPUT -p tcp -s {IP} -j ACCEPT
-echo "Thiết lập quyền truy cập cho {IP}"
-echo "ip.sh done"
-iptables -A INPUT -p tcp --dport 3128 -m state --state NEW -j ACCEPT
-iptables -A INPUT -p tcp --dport 1080 -m state --state NEW -j ACCEPT
-iptables -A INPUT -p tcp --dport 8080 -m state --state NEW -j ACCEPT
-$(awk -F "/" '{print "iptables -A INPUT -p tcp --dport " $4 " -s " $3 " -m state --state NEW -j ACCEPT"}' ${WORKDATA})
-EOF
 }
 
 # Function to rotate proxies
@@ -144,26 +111,9 @@ read COUNT
 FIRST_PORT=10000
 LAST_PORT=$(($FIRST_PORT + $COUNT))
 
-# Generating data, iptables rules, ifconfig commands, 3proxy configuration
+# Generating data, 3proxy configuration
 gen_data >$WORKDIR/data.txt
-gen_iptables >$WORKDIR/boot_iptables.sh
-gen_ifconfig >$WORKDIR/boot_ifconfig.sh
-chmod +x ${WORKDIR}/boot_*.sh /etc/rc.local
 gen_3proxy >/usr/local/etc/3proxy/3proxy.cfg
-
-# Configuring Squid
-# (You can add your Squid configuration here)
-
-# Adding commands to rc.local for startup
-cat >>/etc/rc.local <<EOF
-bash ${WORKDIR}/boot_iptables.sh
-bash ${WORKDIR}/boot_ifconfig.sh
-ulimit -n 10048
-service 3proxy start
-EOF
-
-# Starting services
-bash /etc/rc.local
 
 # Configuring IP whitelist for 3proxy
 auth_ip_config <<EOF
