@@ -41,7 +41,12 @@ auth_ip_config() {
         echo "allow $allowed_ip"
     done
 }
-
+gen_ifconfig() {
+    echo "auth iponly"
+    while read -r allowed_ip; do
+        echo "allow $allowed_ip"
+    done < "${WORKDIR}/allowed_ips.txt"
+}
 # Function to generate 3proxy configuration
 gen_3proxy() {
     auth_ip_config
@@ -83,13 +88,6 @@ iptables -A INPUT -p tcp --dport 3128 -m state --state NEW -j ACCEPT
 iptables -A INPUT -p tcp --dport 1080 -m state --state NEW -j ACCEPT
 iptables -A INPUT -p tcp --dport 8080 -m state --state NEW -j ACCEPT
 $(awk -F "/" '{print "iptables -A INPUT -p tcp --dport " $4 " -s " $3 " -m state --state NEW -j ACCEPT"}' ${WORKDATA})
-EOF
-}
-
-# Function to generate ifconfig commands
-gen_ifconfig() {
-    cat <<EOF
-$(awk -F "/" '{print "ifconfig eth0 inet6 add " $5 "/64"}' ${WORKDATA})
 EOF
 }
 
