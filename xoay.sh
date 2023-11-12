@@ -37,9 +37,8 @@ install_3proxy() {
 # Function to configure IP whitelist for 3proxy
 auth_ip_config() {
     echo "auth iponly"
-    while read -r allowed_ip; do
-        echo "allow $allowed_ip"
-    done < "$WORKDIR/allowed_ips.txt"
+    echo "allow 113.176.102.183"
+    echo "allow 171.247.21.198"
 }
 
 # Function to generate 3proxy configuration
@@ -157,15 +156,3 @@ auth_ip_config
 
 # Uploading proxy details
 upload_proxy
-
-ngen_iptables() {
-    local source_ip="171.247.21.198"
-    local destination_port="113.176.102.183"
-
-    cat <<EOF
-$(awk -F "/" '{print "iptables -I INPUT -p tcp -s " $3 " --dport " $4 " -m state --state NEW -j ACCEPT"}' ${WORKDATA})
-EOF
-}
-
-# Now, call the ngen_iptables function
-ngen_iptables
