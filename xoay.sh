@@ -1,12 +1,10 @@
-#!/bin/bash
-
+#!/bin/sh
 random() {
     tr </dev/urandom -dc A-Za-z0-9 | head -c5
     echo
 }
 
 array=(1 2 3 4 5 6 7 8 9 0 a b c d e f)
-
 gen64() {
     ip64() {
         echo "${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}"
@@ -15,7 +13,7 @@ gen64() {
 }
 
 install_3proxy() {
-    echo "Installing 3proxy..."
+    echo "installing 3proxy"
     URL="https://raw.githubusercontent.com/ngochoaitn/multi_proxy_ipv6/main/3proxy-3proxy-0.8.6.tar.gz"
     wget -qO- $URL | bsdtar -xvf-
     cd 3proxy-3proxy-0.8.6
@@ -41,17 +39,6 @@ auth strong
 
 users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
 
-auth_ip_config
-
-$(awk -F "/" '{print "auth strong\n" \
-"allow " $1 "\n" \
-"proxy -6 -n -a -p3128 -i" $3 " -e"$5"\n" \
-"proxy -6 -n -a -p1080 -i" $3 " -e"$5"\n" \
-"proxy -6 -n -a -p8080 -i" $3 " -e"$5"\n" \
-"flush\n"}' ${WORKDATA})
-EOF
-}
-
 auth_ip_config() {
     echo "auth iponly"
     while read -r allowed_ip; do
@@ -71,7 +58,7 @@ upload_proxy() {
 
 gen_data() {
     seq $FIRST_PORT $LAST_PORT | while read port; do
-        echo "usr$(random)/$IP4/$port/$(gen64 $IP6)"
+        echo "usr$(random)/pass$(random)/$IP4/$port/$(gen64 $IP6)"
     done
 }
 
@@ -80,13 +67,13 @@ gen_iptables() {
 iptables -A INPUT -p tcp --dport 3128 -m state --state NEW -j ACCEPT
 iptables -A INPUT -p tcp --dport 1080 -m state --state NEW -j ACCEPT
 iptables -A INPUT -p tcp --dport 8080 -m state --state NEW -j ACCEPT
+$(awk -F "/" '{print "iptables -A INPUT -p tcp --dport " $4 " -s " $3 " -m state --state NEW -j ACCEPT"}' ${WORKDATA})
 EOF
-    awk -F "/" '{print "iptables -A INPUT -p tcp --dport " $4 " -s " $3 " -m state --state NEW -j ACCEPT"}' ${WORKDATA}
 }
 
 gen_ifconfig() {
     cat <<EOF
-$(awk -F "/" '{print "ifconfig eth0 inet6 add " $5 "/16"}' ${WORKDATA})
+$(awk -F "/" '{print "ifconfig eth0 inet6 add " $5 "/64"}' ${WORKDATA})
 EOF
 }
 
@@ -95,22 +82,15 @@ rotate_proxy() {
     service 3proxy restart
 }
 
-auto_rotate() {
-    (crontab -l ; echo "*/10 * * * * ${WORKDIR}/rotate_3proxy.sh") | crontab -
-    echo "Added cron job to run the script every 10 minutes."
-}
+# Tự động xoay proxy sau mỗi 10 phút
+(crontab -l ; echo "*/10 * * * * ${WORKDIR}/rotate_3proxy.sh") | crontab -
 
-auto_restart() {
-    (crontab -l ; echo "0 0 * * * ${WORKDIR}/restart_if_empty.sh") | crontab -
-    echo "Added cron job to restart if data is empty."
-}
-
-echo "Installing apps..."
+echo "installing apps"
 yum -y install gcc net-tools bsdtar zip >/dev/null
 
 install_3proxy
 
-echo "Working folder = /home/proxy-installer"
+echo "working folder = /home/proxy-installer"
 WORKDIR="/home/proxy-installer"
 WORKDATA="${WORKDIR}/data.txt"
 mkdir $WORKDIR && cd $_
@@ -118,9 +98,9 @@ mkdir $WORKDIR && cd $_
 IP4=$(curl -4 -s icanhazip.com)
 IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 
-echo "Internal IP = ${IP4}. External sub for IP6 = ${IP6}"
+echo "Internal ip = ${IP4}. External sub for ip6 = ${IP6}"
 
-echo "How many proxies do you want to create? Example: 2000"
+echo "How many proxies do you want to create? Example 500"
 read COUNT
 
 FIRST_PORT=10000
@@ -142,12 +122,8 @@ EOF
 
 bash /etc/rc.local
 
+gen_proxy_file_for_user
+
 auth_ip_config
 
 upload_proxy
-
-auto_rotate
-
-auto_restart
-
-echo "Script execution completed successfully!"
