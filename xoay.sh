@@ -150,7 +150,11 @@ EOF
 bash /etc/rc.local
 
 # Generating proxy files for users
-gen_proxy_file_for_user
+gen_proxy_file_for_user() {
+    cat >proxy.txt <<EOF
+    $(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})
+EOF
+}
 
 # Configuring IP whitelist for 3proxy
 auth_ip_config
