@@ -1,16 +1,17 @@
 #!/bin/sh
 random() {
-	tr </dev/urandom -dc A-Za-z0-9 | head -c5
-	echo
+    tr </dev/urandom -dc A-Za-z0-9 | head -c5
+    echo
 }
 
 array=(1 2 3 4 5 6 7 8 9 0 a b c d e f)
 gen64() {
-	ip64() {
-		echo "${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}"
-	}
-	echo "$1:$(ip64):$(ip64):$(ip64):$(ip64)"
+    ip64() {
+        echo "${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}"
+    }
+    echo "$1:$(ip64):$(ip64):$(ip64):$(ip64)"
 }
+
 install_3proxy() {
     echo "installing 3proxy"
     URL="https://raw.githubusercontent.com/ngochoaitn/multi_proxy_ipv6/main/3proxy-3proxy-0.8.6.tar.gz"
@@ -61,6 +62,7 @@ upload_proxy() {
     echo "Password: ${PASS}"
 
 }
+
 gen_data() {
     seq $FIRST_PORT $LAST_PORT | while read port; do
         echo "usr$(random)/pass$(random)/$IP4/$port/$(gen64 $IP6)"
@@ -69,7 +71,7 @@ gen_data() {
 
 gen_iptables() {
     cat <<EOF
-    $(awk -F "/" '{print "iptables -I INPUT -p tcp --dport " $4 "  -m state --state NEW -j ACCEPT"}' ${WORKDATA}) 
+$(awk -F "/" '{print "iptables -I INPUT -p tcp --dport " $4 "  -m state --state NEW -j ACCEPT"}' ${WORKDATA}) 
 EOF
 }
 
@@ -78,6 +80,15 @@ gen_ifconfig() {
 $(awk -F "/" '{print "ifconfig eth0 inet6 add " $5 "/64"}' ${WORKDATA})
 EOF
 }
+
+rotate_proxy() {
+    echo "Rotating proxies..."
+    service 3proxy restart
+}
+
+# Tự động xoay proxy sau mỗi 10 phút
+(crontab -l ; echo "*/10 * * * * ${WORKDIR}/rotate_proxy") | crontab -
+
 echo "installing apps"
 yum -y install gcc net-tools bsdtar zip >/dev/null
 
