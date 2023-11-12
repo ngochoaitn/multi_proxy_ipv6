@@ -103,7 +103,7 @@ IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 
 echo "Internal ip = ${IP4}. External sub for ip6 = ${IP6}"
 
-echo "How many proxies do you want to create? Example 1000"
+echo "How many proxies do you want to create? Example 600"
 read COUNT
 
 FIRST_PORT=10000
