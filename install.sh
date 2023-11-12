@@ -1,3 +1,4 @@
+
 #!/bin/sh
 random() {
     tr </dev/urandom -dc A-Za-z0-9 | head -c5
@@ -60,7 +61,6 @@ upload_proxy() {
     echo "Proxy is ready! Format IP:PORT:LOGIN:PASS"
     echo "Download zip archive from: ${URL}"
     echo "Password: ${PASS}"
-
 }
 
 gen_data() {
@@ -102,9 +102,9 @@ mkdir $WORKDIR && cd $_
 IP4=$(curl -4 -s icanhazip.com)
 IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 
-echo "Internal ip = ${IP4}. Exteranl sub for ip6 = ${IP6}"
+echo "Internal ip = ${IP4}. External sub for ip6 = ${IP6}"
 
-echo "How many proxy do you want to create? Example 500"
+echo "How many proxies do you want to create? Example 500"
 read COUNT
 
 FIRST_PORT=10000
