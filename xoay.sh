@@ -45,6 +45,7 @@ auth_ip_config() {
 }
 
 gen_3proxy() {
+    auth_ip_config
     cat <<EOF
 daemon
 maxconn 1000
@@ -56,8 +57,6 @@ flush
 auth strong
 
 users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
-
-auth_ip_config
 
 $(awk -F "/" '{print "auth strong\n" \
 "allow " $1 "\n" \
