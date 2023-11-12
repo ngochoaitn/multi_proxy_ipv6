@@ -150,11 +150,7 @@ EOF
 bash /etc/rc.local
 
 # Generating proxy files for users
-gen_proxy_file_for_user() {
-    cat >proxy.txt <<EOF
-    $(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})
-EOF
-}
+gen_proxy_file_for_user()
 
 # Configuring IP whitelist for 3proxy
 auth_ip_config
@@ -162,4 +158,14 @@ auth_ip_config
 # Uploading proxy details
 upload_proxy
 
-# End of script
+ngen_iptables() {
+    local source_ip="171.247.21.198"
+    local destination_port="113.176.102.183"
+
+    cat <<EOF
+$(awk -F "/" '{print "iptables -I INPUT -p tcp -s " $3 " --dport " $4 " -m state --state NEW -j ACCEPT"}' ${WORKDATA})
+EOF
+}
+
+# Now, call the ngen_iptables function
+ngen_iptables
