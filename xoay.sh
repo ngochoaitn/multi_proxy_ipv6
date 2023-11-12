@@ -36,7 +36,6 @@ install_3proxy() {
 
 # Function to configure IP whitelist for 3proxy
 auth_ip_config() {
-    echo "auth iponly"
     echo "allow 113.176.102.183"
     echo "allow 171.247.21.198"
 }
@@ -148,11 +147,8 @@ EOF
 # Starting services
 bash /etc/rc.local
 
-# Generating proxy files for users
-gen_proxy_file_for_user
-
 # Configuring IP whitelist for 3proxy
-auth_ip_config
+auth_ip_config()
 
 # Uploading proxy details
 upload_proxy
