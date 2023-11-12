@@ -149,7 +149,7 @@ EOF
 bash /etc/rc.local
 
 # Generating proxy files for users
-gen_proxy_file_for_user()
+gen_proxy_file_for_user
 
 # Configuring IP whitelist for 3proxy
 auth_ip_config
