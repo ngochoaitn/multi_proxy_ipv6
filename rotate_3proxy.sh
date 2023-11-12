@@ -114,9 +114,8 @@ IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 
 echo "Internal IP = ${IP4}. External subnet for IPv6 = ${IP6}"
 
-# Get the number of proxies to create
-echo "How many proxies do you want to create? Example: 500"
-read COUNT
+COUNT=1000
+echo "Creating $COUNT proxies..."
 
 FIRST_PORT=10000
 LAST_PORT=$(($FIRST_PORT + $COUNT))
