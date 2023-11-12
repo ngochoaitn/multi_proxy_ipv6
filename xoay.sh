@@ -84,6 +84,24 @@ gen_data() {
 # Function to generate iptables rules
 gen_iptables() {
     cat <<EOF
+        cat <<EOF
+    systemctl mask firewalld
+    systemctl enable iptables
+    systemctl stop firewalld
+    yum install iptables-services -y
+    systemctl enable iptables
+    systemctl start iptables
+    systemctl enable ip6tables
+    systemctl start ip6tables
+    echo "Thiết lập tường lửa...."
+}
+
+gen_iptables
+
+# Allow specific IP address in iptables
+iptables -I INPUT -p tcp -s {IP} -j ACCEPT
+echo "Thiết lập quyền truy cập cho {IP}"
+echo "ip.sh done"
 iptables -A INPUT -p tcp --dport 3128 -m state --state NEW -j ACCEPT
 iptables -A INPUT -p tcp --dport 1080 -m state --state NEW -j ACCEPT
 iptables -A INPUT -p tcp --dport 8080 -m state --state NEW -j ACCEPT
