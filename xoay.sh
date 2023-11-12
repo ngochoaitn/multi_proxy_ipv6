@@ -15,23 +15,22 @@ gen64() {
 }
 
 install_3proxy() {
-    echo "installing 3proxy"
+    echo "Installing 3proxy..."
     URL="https://raw.githubusercontent.com/ngochoaitn/multi_proxy_ipv6/main/3proxy-3proxy-0.8.6.tar.gz"
     wget -qO- $URL | bsdtar -xvf-
     cd 3proxy-3proxy-0.8.6
     make -f Makefile.Linux
     mkdir -p /usr/local/etc/3proxy/{bin,logs,stat}
-    
-    # Stop the 3proxy service before copying
-# Stop the 3proxy service
-service 3proxy stop
 
-# Copy the 3proxy binary with force flag
-cp -f src/3proxy /usr/local/etc/3proxy/bin/
+    # Stop 3proxy if it's running
+    systemctl stop 3proxy
 
-# Start the 3proxy service again
-service 3proxy start
-    
+    # Replace 3proxy binary forcefully
+    yes | cp -f src/3proxy /usr/local/etc/3proxy/bin/
+
+    # Start 3proxy again
+    systemctl start 3proxy
+
     cp ./scripts/rc.d/proxy.sh /etc/init.d/3proxy
     chmod +x /etc/init.d/3proxy
     chkconfig 3proxy on
