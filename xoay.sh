@@ -39,9 +39,15 @@ setuid 65535
 flush
 auth strong
 
+users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
+
+auth_ip_config
+
 $(awk -F "/" '{print "auth strong\n" \
 "allow " $1 "\n" \
-"proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n" \
+"proxy -6 -n -a -p3128 -i" $3 " -e"$5"\n" \
+"proxy -6 -n -a -p1080 -i" $3 " -e"$5"\n" \
+"proxy -6 -n -a -p8080 -i" $3 " -e"$5"\n" \
 "flush\n"}' ${WORKDATA})
 EOF
 }
@@ -74,8 +80,8 @@ gen_iptables() {
 iptables -A INPUT -p tcp --dport 3128 -m state --state NEW -j ACCEPT
 iptables -A INPUT -p tcp --dport 1080 -m state --state NEW -j ACCEPT
 iptables -A INPUT -p tcp --dport 8080 -m state --state NEW -j ACCEPT
-$(awk -F "/" '{print "iptables -A INPUT -p tcp --dport " $4 " -s " $3 " -m state --state NEW -j ACCEPT"}' ${WORKDATA})
 EOF
+    awk -F "/" '{print "iptables -A INPUT -p tcp --dport " $4 " -s " $3 " -m state --state NEW -j ACCEPT"}' ${WORKDATA}
 }
 
 gen_ifconfig() {
