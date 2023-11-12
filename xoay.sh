@@ -138,7 +138,7 @@ EOF
 }
 
 main
-auth_ip_config <<EOF
+gen_ifconfig()<<EOF
 113.176.102.183
 171.247.21.198
 EOF
