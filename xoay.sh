@@ -79,10 +79,14 @@ EOF
 }
 
 gen_ifconfig() {
-    cat <<EOF
-$(awk -F "/" '{print "ifconfig eth0 inet6 add " $5 "/64"}' ${WORKDATA})
-EOF
+    while read -r allowed_ip; do
+        echo "ifconfig eth0 inet6 add $allowed_ip/64"
+    done
 }
+
+# Sử dụng hàm gen_ifconfig để tạo lệnh ifconfig và thêm vào file boot_ifconfig.sh
+gen_ifconfig >$WORKDIR/boot_ifconfig.sh
+chmod +x ${WORKDIR}/boot_*.sh /etc/rc.local
 
 rotate_proxy() {
     echo "Rotating proxies..."
