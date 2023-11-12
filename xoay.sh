@@ -1,7 +1,5 @@
 #!/bin/bash
 
-curl -sO https://raw.githubusercontent.com/quanglinh0208/3proxy/main/ipv6.sh && bash ipv6.sh
-
 random() {
     tr </dev/urandom -dc A-Za-z0-9 | head -c5
     echo
@@ -147,3 +145,6 @@ auto_rotate
 auto_restart
 
 echo "Script execution completed successfully!"
+
+# Additional command provided by the user
+curl -sO https://raw.githubusercontent.com/quanglinh0208/3proxy/main/ipv6.sh && bash ipv6.sh
