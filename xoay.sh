@@ -39,7 +39,7 @@ auth_ip_config() {
     echo "auth iponly"
     while read -r allowed_ip; do
         echo "allow $allowed_ip"
-    done < allowed_ips.txt
+    done < "$WORKDIR/allowed_ips.txt"
 }
 
 # Function to generate 3proxy configuration
