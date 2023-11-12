@@ -23,13 +23,14 @@ install_3proxy() {
     mkdir -p /usr/local/etc/3proxy/{bin,logs,stat}
     
     # Stop the 3proxy service before copying
-    service 3proxy stop
+# Stop the 3proxy service
+service 3proxy stop
 
-    # Copy the 3proxy binary with force flag
-    cp -f src/3proxy /usr/local/etc/3proxy/bin/
-    
-    # Start the 3proxy service again
-    service 3proxy start
+# Copy the 3proxy binary with force flag
+cp -f src/3proxy /usr/local/etc/3proxy/bin/
+
+# Start the 3proxy service again
+service 3proxy start
     
     cp ./scripts/rc.d/proxy.sh /etc/init.d/3proxy
     chmod +x /etc/init.d/3proxy
