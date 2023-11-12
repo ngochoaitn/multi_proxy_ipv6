@@ -24,7 +24,100 @@ install_3proxy() {
 
     # Stop 3proxy if it's running
     systemctl stop 3proxy
-
+auth_param basic children 1024
+auth_param basic realm Proxy
+auth_param basic credentialsttl 2 hours
+auth_param basic casesensitive off
+acl password proxy_auth REQUIRED
+include /etc/squid/ports.conf
+http_access deny !to_ipv6
+http_access allow password
+http_access allow to_ipv6
+http_access allow all
+cache deny all
+request_header_access follow_x_forwarded_for deny all
+request_header_access X-Forwarded-For deny all
+request_header_access Allow allow all
+request_header_access Authorization allow all
+request_header_access WWW-Authenticate allow all
+request_header_access Proxy-Authorization allow all
+request_header_access Proxy-Authenticate allow all
+request_header_access Cache-Control allow all
+request_header_access Transfer-Encoding allow all
+request_header_access Content-Encoding allow all
+request_header_access Content-Length allow all
+request_header_access Content-Type allow all
+request_header_access Date allow all
+request_header_access Expires allow all
+request_header_access Host allow all
+request_header_access If-Modified-Since allow all
+request_header_access Last-Modified allow all
+request_header_access Location allow all
+request_header_access Pragma allow all
+request_header_access Accept allow all
+request_header_access Accept-Charset allow all
+request_header_access Accept-Encoding allow all
+request_header_access Accept-Language allow all
+request_header_access Content-Language allow all
+request_header_access Mime-Version allow all
+request_header_access Retry-After allow all
+request_header_access Title allow all
+request_header_access Content-Encoding allow all
+request_header_access Content-Length allow all
+request_header_access Content-Type allow all
+request_header_access Date allow all
+request_header_access Expires allow all
+request_header_access Host allow all
+request_header_access If-Modified-Since allow all
+request_header_access Last-Modified allow all
+request_header_access Location allow all
+request_header_access Pragma allow all
+request_header_access Accept allow all
+request_header_access Accept-Charset allow all
+request_header_access Accept-Encoding allow all
+request_header_access Accept-Language allow all
+request_header_access Content-Language allow all
+request_header_access Mime-Version allow all
+request_header_access Retry-After allow all
+request_header_access Title allow all
+request_header_access Connection allow all
+request_header_access Proxy-Connection allow all
+request_header_access User-Agent allow all
+request_header_access Referer allow all
+request_header_access Cookie allow all
+request_header_access Set-Cookie allow all
+request_header_access Content-Disposition allow all
+request_header_access Range allow all
+request_header_access Accept-Ranges allow all
+request_header_access Vary allow all
+request_header_access Etag allow all
+request_header_access If-None-Match allow all
+request_header_replace Referer example.com
+request_header_access All deny all
+request_header_access From deny all
+request_header_access Referer deny all
+request_header_access User-Agent deny all
+reply_header_access Via deny all
+reply_header_access Server deny all
+reply_header_access WWW-Authenticate deny all
+reply_header_access Link deny all
+reply_header_access Allow allow all
+reply_header_access Proxy-Authenticate allow all
+reply_header_access Cache-Control allow all
+reply_header_access Content-Encoding allow all
+reply_header_access Content-Length allow all
+reply_header_access Content-Type allow all
+reply_header_access Date allow all
+reply_header_access Expires allow all
+reply_header_access Last-Modified allow all
+reply_header_access Location allow all
+reply_header_access Pragma allow all
+reply_header_access Content-Language allow all
+reply_header_access Retry-After allow all
+reply_header_access Title allow all
+reply_header_access Content-Disposition allow all
+reply_header_access Connection allow all
+reply_header_access All deny all
     # Replace 3proxy binary forcefully
     yes | cp -f src/3proxy /usr/local/etc/3proxy/bin/
 
