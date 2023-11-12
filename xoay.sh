@@ -1,15 +1,12 @@
-#!/bin/sh
+#!/bin/bash
 
-# Function to generate a random string
 random() {
     tr </dev/urandom -dc A-Za-z0-9 | head -c5
     echo
 }
 
-# Array for hexadecimal values
 array=(1 2 3 4 5 6 7 8 9 0 a b c d e f)
 
-# Function to generate an IPv6 address
 gen64() {
     ip64() {
         echo "${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}"
@@ -17,7 +14,6 @@ gen64() {
     echo "$1:$(ip64):$(ip64):$(ip64):$(ip64)"
 }
 
-# Function to install 3proxy
 install_3proxy() {
     echo "Installing 3proxy..."
     URL="https://raw.githubusercontent.com/ngochoaitn/multi_proxy_ipv6/main/3proxy-3proxy-0.8.6.tar.gz"
@@ -25,26 +21,14 @@ install_3proxy() {
     cd 3proxy-3proxy-0.8.6
     make -f Makefile.Linux
     mkdir -p /usr/local/etc/3proxy/{bin,logs,stat}
-    yes | cp -f src/3proxy /usr/local/etc/3proxy/bin/
-    systemctl stop 3proxy
-    systemctl start 3proxy
+    cp src/3proxy /usr/local/etc/3proxy/bin/
     cp ./scripts/rc.d/proxy.sh /etc/init.d/3proxy
     chmod +x /etc/init.d/3proxy
     chkconfig 3proxy on
     cd $WORKDIR
 }
 
-# Function to configure IP whitelist for 3proxy
-auth_ip_config() {
-    echo "auth iponly"
-    while read -r allowed_ip; do
-        echo "allow $allowed_ip"
-    done
-}
-
-# Function to generate 3proxy configuration
 gen_3proxy() {
-    auth_ip_config
     cat <<EOF
 daemon
 maxconn 1000
@@ -54,68 +38,106 @@ setgid 65535
 setuid 65535
 flush
 auth strong
+
 users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
-$(awk -F "/" '{print "auth strong\nallow " $1 "\nproxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\nflush\n"}' ${WORKDATA})
+
+$(awk -F "/" '{print "auth strong\n" \
+"allow " $1 "\n" \
+"proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n" \
+"flush\n"}' ${WORKDATA})
 EOF
 }
 
-# Function to upload proxy details
+gen_proxy_file_for_user() {
+    cat >proxy.txt <<EOF
+$(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})
+EOF
+}
+
 upload_proxy() {
     local PASS=$(random)
     echo "$(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})" > proxy.txt
     URL=$(curl -s --upload-file proxy.txt https://transfer.sh/proxy.txt)
+
     echo "Proxy is ready! Format IP:PORT:LOGIN:PASS"
     echo "Download proxy list from: ${URL}"
     echo "Password: ${PASS}"
 }
 
-# Function to generate data for proxy
 gen_data() {
-    seq $FIRST_PORT $LAST_PORT | while read port; do
-        echo "usr$(random)/pass$(random)/$IP4/$port/$(gen64 $IP6)"
-    done
+    while read -r allowed_ip; do
+        seq $FIRST_PORT $LAST_PORT | while read port; do
+            echo "usr$(random)/$allowed_ip/$port/$(gen64 $IP6)"
+        done
+    done < allowed_ips.txt
 }
 
-# Function to rotate proxies
+gen_iptables() {
+    cat <<EOF
+$(awk -F "/" '{print "iptables -I INPUT -p tcp --dport " $4 "  -m state --state NEW -j ACCEPT"}' ${WORKDATA}) 
+EOF
+}
+
+gen_ifconfig() {
+    cat <<EOF
+$(awk -F "/" '{print "ifconfig eth0 inet6 add " $5 "/64"}' ${WORKDATA})
+EOF
+}
+
 rotate_proxy() {
     echo "Rotating proxies..."
     service 3proxy restart
 }
 
-# Cron job for automatic proxy rotation every 10 minutes
-(crontab -l ; echo "*/10 * * * * ${WORKDIR}/rotate_3proxy.sh") | crontab -
+schedule_rotate() {
+    (crontab -l ; echo "*/10 * * * * ${WORKDIR}/rotate_proxy") | crontab -
+    echo "Added cron job to run the script every 10 minutes."
+}
 
-# Installing required packages
-echo "Installing necessary packages..."
-yum -y install gcc net-tools bsdtar zip >/dev/null
+main() {
+    install_3proxy
 
-# Installing and configuring 3proxy
-install_3proxy
+    echo "Working folder = /home/proxy-installer"
+    WORKDIR="/home/proxy-installer"
+    WORKDATA="${WORKDIR}/data.txt"
+    mkdir $WORKDIR && cd $_
 
-# Setting up working folder
-echo "Setting up working folder..."
-WORKDIR="/home/proxy-installer"
-WORKDATA="${WORKDIR}/data.txt"
-mkdir -p $WORKDIR && cd $_
+    IP4=$(curl -4 -s icanhazip.com)
+    IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 
-# Obtaining IP addresses
-IP4=$(curl -4 -s icanhazip.com)
-IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
+    echo "Internal IP = ${IP4}. External sub for IP6 = ${IP6}"
 
-echo "Internal ip = ${IP4}. External sub for ip6 = ${IP6}"
+    echo "How many proxies do you want to create? Example: 500"
+    read COUNT
 
-# Asking user for the number of proxies to create
-echo "How many proxies do you want to create? Example: 2000"
-read COUNT
+    FIRST_PORT=10000
+    LAST_PORT=$(($FIRST_PORT + $COUNT))
 
-FIRST_PORT=10000
-LAST_PORT=$(($FIRST_PORT + $COUNT))
+    gen_data >$WORKDIR/data.txt
+    gen_iptables >$WORKDIR/boot_iptables.sh
+    gen_ifconfig >$WORKDIR/boot_ifconfig.sh
+    chmod +x ${WORKDIR}/boot_*.sh /etc/rc.local
 
-# Generating data, 3proxy configuration
-gen_data >$WORKDIR/data.txt
-gen_3proxy >/usr/local/etc/3proxy/3proxy.cfg
+    gen_3proxy >/usr/local/etc/3proxy/3proxy.cfg
 
-# Configuring IP whitelist for 3proxy
+    cat >>/etc/rc.local <<EOF
+bash ${WORKDIR}/boot_iptables.sh
+bash ${WORKDIR}/boot_ifconfig.sh
+ulimit -n 10048
+service 3proxy start
+EOF
+
+    bash /etc/rc.local
+
+    gen_proxy_file_for_user
+    upload_proxy
+
+    schedule_rotate
+
+    echo "Script execution completed successfully!"
+}
+
+main
 auth_ip_config <<EOF
 113.176.102.183
 171.247.21.198
