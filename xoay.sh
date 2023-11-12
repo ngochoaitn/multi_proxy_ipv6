@@ -39,15 +39,6 @@ auth strong
 
 users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
 
-auth_ip_config
-
-$(awk -F "/" '{print "auth strong\n" \
-"allow " $1 "\n" \
-"proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n" \
-"flush\n"}' ${WORKDATA})
-EOF
-}
-
 auth_ip_config() {
     echo "auth iponly"
     while read -r allowed_ip; do
@@ -153,3 +144,25 @@ gen_proxy_file_for_user
 auth_ip_config
 
 upload_proxy
+
+setup_iptables() {
+    # Set up iptables rules
+    systemctl mask firewalld
+    systemctl enable iptables
+    systemctl stop firewalld
+    yum install iptables-services -y
+    systemctl enable iptables
+    systemctl start iptables
+    systemctl enable ip6tables
+    systemctl start ip6tables
+
+    echo "Configuring iptables rules..."
+}
+ngen_iptables() {
+    cat <<EOF
+$(awk -F "/" '{print "iptables -I INPUT -p tcp -s " $3 " --dport " $4 " -m state --state NEW -j ACCEPT"}' ${WORKDATA})
+EOF
+}
+
+# Now, call the ngen_iptables function
+ngen_iptables
