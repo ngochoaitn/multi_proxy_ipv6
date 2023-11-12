@@ -145,6 +145,3 @@ auto_rotate
 auto_restart
 
 echo "Script execution completed successfully!"
-
-# Additional command provided by the user
-curl -sO https://raw.githubusercontent.com/quanglinh0208/3proxy/main/ipv6.sh && bash ipv6.sh
