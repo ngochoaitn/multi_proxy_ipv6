@@ -142,10 +142,3 @@ EOF
 }
 
 main
-gen_ifconfig()<<EOF
-113.176.102.183
-171.247.21.198
-EOF
-
-# Uploading proxy details
-upload_proxy
