@@ -38,9 +38,7 @@ setgid 65535
 setuid 65535
 flush
 auth strong
-
 users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
-
 $(awk -F "/" '{print "auth strong\n" \
 "allow " $1 "\n" \
 "proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n" \
@@ -58,7 +56,6 @@ upload_proxy() {
     local PASS=$(random)
     echo "$(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})" > proxy.txt
     URL=$(curl -s --upload-file proxy.txt https://transfer.sh/proxy.txt)
-
     echo "Proxy is ready! Format IP:PORT:LOGIN:PASS"
     echo "Download proxy list from: ${URL}"
     echo "Password: ${PASS}"
@@ -79,14 +76,10 @@ EOF
 }
 
 gen_ifconfig() {
-    while read -r allowed_ip; do
-        echo "ifconfig eth0 inet6 add $allowed_ip/64"
-    done
+    cat <<EOF
+$(awk -F "/" '{print "ifconfig eth0 inet6 add " $5 "/64"}' ${WORKDATA})
+EOF
 }
-
-# Sử dụng hàm gen_ifconfig để tạo lệnh ifconfig và thêm vào file boot_ifconfig.sh
-gen_ifconfig >$WORKDIR/boot_ifconfig.sh
-chmod +x ${WORKDIR}/boot_*.sh /etc/rc.local
 
 rotate_proxy() {
     echo "Rotating proxies..."
@@ -98,7 +91,22 @@ schedule_rotate() {
     echo "Added cron job to run the script every 10 minutes."
 }
 
+setup_iptables() {
+    # Set up iptables rules
+    systemctl mask firewalld
+    systemctl enable iptables
+    systemctl stop firewalld
+    yum install iptables-services -y
+    systemctl enable iptables
+    systemctl start iptables
+    systemctl enable ip6tables
+    systemctl start ip6tables
+
+    echo "Configuring iptables rules..."
+}
+
 main() {
+    setup_iptables
     install_3proxy
 
     echo "Working folder = /home/proxy-installer"
