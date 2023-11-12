@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 random() {
     tr </dev/urandom -dc A-Za-z0-9 | head -c5
@@ -15,13 +15,22 @@ gen64() {
 }
 
 install_3proxy() {
-    echo "Installing 3proxy..."
+    echo "installing 3proxy"
     URL="https://raw.githubusercontent.com/ngochoaitn/multi_proxy_ipv6/main/3proxy-3proxy-0.8.6.tar.gz"
     wget -qO- $URL | bsdtar -xvf-
     cd 3proxy-3proxy-0.8.6
     make -f Makefile.Linux
     mkdir -p /usr/local/etc/3proxy/{bin,logs,stat}
-    cp src/3proxy /usr/local/etc/3proxy/bin/
+    
+    # Stop the 3proxy service before copying
+    service 3proxy stop
+
+    # Copy the 3proxy binary with force flag
+    cp -f src/3proxy /usr/local/etc/3proxy/bin/
+    
+    # Start the 3proxy service again
+    service 3proxy start
+    
     cp ./scripts/rc.d/proxy.sh /etc/init.d/3proxy
     chmod +x /etc/init.d/3proxy
     chkconfig 3proxy on
@@ -38,6 +47,10 @@ setgid 65535
 setuid 65535
 flush
 auth strong
+
+users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
+
+auth_ip_config
 
 $(awk -F "/" '{print "auth strong\n" \
 "allow " $1 "\n" \
@@ -65,7 +78,7 @@ upload_proxy() {
 
 gen_data() {
     seq $FIRST_PORT $LAST_PORT | while read port; do
-        echo "usr$(random)/$IP4/$port/$(gen64 $IP6)"
+        echo "usr$(random)/pass$(random)/$IP4/$port/$(gen64 $IP6)"
     done
 }
 
@@ -89,32 +102,25 @@ rotate_proxy() {
     service 3proxy restart
 }
 
-auto_rotate() {
-    (crontab -l ; echo "*/10 * * * * ${WORKDIR}/rotate_3proxy.sh") | crontab -
-    echo "Added cron job to run the script every 10 minutes."
-}
+# Tự động xoay proxy sau mỗi 10 phút
+(crontab -l ; echo "*/10 * * * * ${WORKDIR}/rotate_3proxy.sh") | crontab -
 
-auto_restart() {
-    (crontab -l ; echo "0 0 * * * ${WORKDIR}/restart_if_empty.sh") | crontab -
-    echo "Added cron job to restart if data is empty."
-}
-
-echo "Installing apps..."
+echo "installing apps"
 yum -y install gcc net-tools bsdtar zip >/dev/null
 
 install_3proxy
 
-echo "Working folder = /home/proxy-installer"
+echo "working folder = /home/proxy-installer"
 WORKDIR="/home/proxy-installer"
 WORKDATA="${WORKDIR}/data.txt"
-mkdir $WORKDIR && cd $_
+mkdir -p $WORKDIR && cd $_
 
 IP4=$(curl -4 -s icanhazip.com)
 IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 
-echo "Internal IP = ${IP4}. External sub for IP6 = ${IP6}"
+echo "Internal ip = ${IP4}. External sub for ip6 = ${IP6}"
 
-echo "How many proxies do you want to create? Example: 2000"
+echo "Bạn muốn tạo bao nhiêu proxy? Ví dụ 2000"
 read COUNT
 
 FIRST_PORT=10000
@@ -136,12 +142,8 @@ EOF
 
 bash /etc/rc.local
 
+gen_proxy_file_for_user
+
 auth_ip_config
 
 upload_proxy
-
-auto_rotate
-
-auto_restart
-
-echo "Script execution completed successfully!"
