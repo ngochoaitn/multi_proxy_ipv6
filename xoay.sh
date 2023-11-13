@@ -28,23 +28,31 @@ install_3proxy() {
     cd $WORKDIR
 }
 
-gen_3proxy() {
+gen_3proxy_cfg() {
     cat <<EOF
 daemon
-maxconn 1000
+maxconn 3000
+nserver 1.1.1.1
+nserver [2606:4700:4700::1111]
+nserver [2606:4700:4700::1001]
+nserver [2001:4860:4860::8888]
 nscache 65536
 timeouts 1 5 30 60 180 1800 15 60
 setgid 65535
 setuid 65535
+stacksize 6291456 
 flush
-auth strong
+authcache user 86400
+auth strong cache
 users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
-$(awk -F "/" '{print "auth strong\n" \
-"allow " $1 "\n" \
-"proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n" \
-"flush\n"}' ${WORKDATA})
-$(awk '{print "allow " $1}' internal_ips.txt)
+allow $(awk -F "/" '{print $1}' ${WORKDATA} | tr '\n' ' ')
 EOF
+
+    port=$START_PORT
+    while read ip; do
+        echo "proxy -6 -n -a -p$port -i$IP4 -e$ip"
+        ((port+=1))
+    done < $WORKDIR/ipv6.txt
 }
 
 gen_proxy_file_for_user() {
