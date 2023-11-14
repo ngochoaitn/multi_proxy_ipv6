@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Function to generate a random string
 random() {
@@ -23,7 +23,7 @@ install_3proxy() {
     cd $WORKDIR
 }
 
-# Function to generate 3proxy configuration without IP whitelist
+# Function to generate 3proxy configuration
 gen_3proxy() {
     cat <<EOF
 daemon
@@ -116,9 +116,12 @@ chmod +x ${WORKDIR}/boot_*.sh /etc/rc.local
 
 gen_3proxy >/usr/local/etc/3proxy/3proxy.cfg
 
+# Configuring Squid (You can add your Squid configuration here)
+
 # Adding commands to rc.local for startup
-cat <<EOF >>/etc/rc.local
+cat >>/etc/rc.local <<EOF
 bash ${WORKDIR}/boot_iptables.sh
+bash ${WORKDIR}/boot_ifconfig.sh
 ulimit -n 10048
 service 3proxy start
 EOF
