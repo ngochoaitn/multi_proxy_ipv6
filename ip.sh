@@ -1,8 +1,4 @@
-#!/usr/bin/bash
-
-WORKDIR="/home/proxy-installer"  # Định nghĩa thư mục làm việc
-WORKDATA="${WORKDIR}/data.txt"   # Định nghĩa đường dẫn đến tệp dữ liệu
-LOG_FILE="$WORKDIR/installation_log.txt"  # Định nghĩa đường dẫn tới file log
+#!/usr/bin/
 
 # Function to generate a random string
 random() {
