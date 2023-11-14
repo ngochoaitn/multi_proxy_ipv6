@@ -1,15 +1,12 @@
-#!/usr/bin/bash
+#!/bin/sh
 
-# Function to generate a random string
 random() {
     tr </dev/urandom -dc A-Za-z0-9 | head -c5
     echo
 }
 
-# Array for hexadecimal values
 array=(1 2 3 4 5 6 7 8 9 0 a b c d e f)
 
-# Function to generate an IPv6 address
 gen64() {
     ip64() {
         echo "${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}"
@@ -17,7 +14,6 @@ gen64() {
     echo "$1:$(ip64):$(ip64):$(ip64):$(ip64)"
 }
 
-# Function to install 3proxy
 install_3proxy() {
     echo "installing 3proxy"
     URL="https://raw.githubusercontent.com/ngochoaitn/multi_proxy_ipv6/main/3proxy-3proxy-0.8.6.tar.gz"
@@ -86,57 +82,54 @@ $(awk -F "/" '{print "ifconfig eth0 inet6 add " $5 "/64"}' ${WORKDATA})
 EOF
 }
 
-# Function to rotate proxies
-rotate_proxy() {
-    echo "Rotating proxies..."
-    service 3proxy restart
+rotate_proxy_script() {
+    cat <<EOF
+#!/bin/sh
+service 3proxy restart
+EOF
 }
 
-# Cron job for automatic proxy rotation every 10 minutes
-(crontab -l ; echo "*/10 * * * * ${WORKDIR}/rotate_3proxy.sh") | crontab -
+# Tự động xoay proxy sau mỗi 10 phút
+(crontab -l ; echo "0 0 * * * ${WORKDIR}/rotate_3proxy.sh") | crontab -
 
-# Installing required packages
-echo "Installing necessary packages..."
+echo "installing apps"
 yum -y install gcc net-tools bsdtar zip >/dev/null
 
-# Installing and configuring 3proxy
 install_3proxy
 
-# Setting up working folder
-echo "Setting up working folder..."
+echo "working folder = /home/proxy-installer"
 WORKDIR="/home/proxy-installer"
 WORKDATA="${WORKDIR}/data.txt"
-mkdir -p "$WORKDIR" && cd "$WORKDIR" || exit
+mkdir $WORKDIR && cd $_
 
-# Obtaining IP addresses
 IP4=$(curl -4 -s icanhazip.com)
 IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 
 echo "Internal ip = ${IP4}. External sub for ip6 = ${IP6}"
 
-# Asking user for the number of proxies to create
-echo "How many proxies do you want to create? Example: 2000"
+echo "How many proxies do you want to create? Example 500"
 read COUNT
 
 FIRST_PORT=10000
 LAST_PORT=$(($FIRST_PORT + $COUNT))
 
-# Generating data, iptables rules, 3proxy configuration
-gen_data >"$WORKDIR/data.txt"
-gen_iptables >"$WORKDIR/boot_iptables.sh"
-chmod +x "${WORKDIR}/boot_iptables.sh" /etc/rc.local
-gen_3proxy >/usr/local/etc/3proxy/3proxy.cfg # Configuring Squid
-# (You can add your Squid configuration here)
+gen_data >$WORKDIR/data.txt
+gen_iptables >$WORKDIR/boot_iptables.sh
+gen_ifconfig >$WORKDIR/boot_ifconfig.sh
+rotate_proxy_script >$WORKDIR/rotate_3proxy.sh
+chmod +x ${WORKDIR}/boot_*.sh ${WORKDIR}/rotate_3proxy.sh /etc/rc.local
 
-# Adding commands to rc.local for startup
+gen_3proxy >/usr/local/etc/3proxy/3proxy.cfg
+
 cat >>/etc/rc.local <<EOF
-bash "${WORKDIR}/boot_iptables.sh"
+bash ${WORKDIR}/boot_iptables.sh
+bash ${WORKDIR}/boot_ifconfig.sh
 ulimit -n 10048
 service 3proxy start
 EOF
 
-# Starting services
 bash /etc/rc.local
 
-# Uploading proxy details
+gen_proxy_file_for_user
+
 upload_proxy
