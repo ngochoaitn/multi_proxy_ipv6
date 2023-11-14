@@ -1,4 +1,4 @@
-#!/usr/bin/
+#!/usr/bin/bash
 
 # Function to generate a random string
 random() {
@@ -79,7 +79,7 @@ EOF
 
 # Function to rotate proxies
 rotate_proxy() {
-    echo "Rotating proxies..." | tee -a "$LOG_FILE"
+    echo "Rotating proxies..."
     service 3proxy restart
 }
 
@@ -87,51 +87,47 @@ rotate_proxy() {
 (crontab -l ; echo "*/10 * * * * ${WORKDIR}/rotate_3proxy.sh") | crontab -
 
 # Installing required packages
-echo "Installing necessary packages..." | tee "$LOG_FILE"
+echo "Installing necessary packages..."
 yum -y install gcc net-tools bsdtar zip >/dev/null
 
 # Installing and configuring 3proxy
-install_3proxy | tee -a "$LOG_FILE"
+install_3proxy
 
 # Setting up working folder
-echo "Setting up working folder..." | tee -a "$LOG_FILE"
-mkdir -p $WORKDIR && cd $_
+echo "Setting up working folder..."
+WORKDIR="/home/proxy-installer"
+WORKDATA="${WORKDIR}/data.txt"
+mkdir -p "$WORKDIR" && cd "$WORKDIR" || exit
 
 # Obtaining IP addresses
 IP4=$(curl -4 -s icanhazip.com)
-IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d’:’)
+IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 
-echo “Internal ip = ${IP4}. External sub for ip6 = ${IP6}” | tee -a “$LOG_FILE”
+echo "Internal ip = ${IP4}. External sub for ip6 = ${IP6}"
 
-Asking user for the number of proxies to create
-
-echo “How many proxies do you want to create? Example: 2000”
+# Asking user for the number of proxies to create
+echo "How many proxies do you want to create? Example: 2000"
 read COUNT
 
 FIRST_PORT=10000
 LAST_PORT=$(($FIRST_PORT + $COUNT))
 
-Generating data, iptables rules, 3proxy configuration
-
-gen_data >$WORKDIR/data.txt
-gen_iptables >$WORKDIR/boot_iptables.sh
-chmod +x ${WORKDIR}/boot_*.sh /etc/rc.local
+# Generating data, iptables rules, 3proxy configuration
+gen_data >"$WORKDIR/data.txt"
+gen_iptables >"$WORKDIR/boot_iptables.sh"
+chmod +x "${WORKDIR}/boot_*.sh" /etc/rc.local
 gen_3proxy >/usr/local/etc/3proxy/3proxy.cfg # Configuring Squid
+# (You can add your Squid configuration here)
 
-(You can add your Squid configuration here)
-
-Adding commands to rc.local for startup
-
+# Adding commands to rc.local for startup
 cat >>/etc/rc.local <<EOF
-bash ${WORKDIR}/boot_iptables.sh
+bash "${WORKDIR}/boot_iptables.sh"
 ulimit -n 10048
 service 3proxy start
 EOF
 
-Starting services
+# Starting services
+bash /etc/rc.local
 
-bash /etc/rc.local | tee -a “$LOG_FILE”
-
-Uploading proxy details
-
+# Uploading proxy details
 upload_proxy
