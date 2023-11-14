@@ -19,22 +19,19 @@ gen64() {
 
 # Function to install 3proxy
 install_3proxy() {
-    echo "Installing 3proxy..."
+    echo "installing 3proxy"
     URL="https://raw.githubusercontent.com/ngochoaitn/multi_proxy_ipv6/main/3proxy-3proxy-0.8.6.tar.gz"
     wget -qO- $URL | bsdtar -xvf-
     cd 3proxy-3proxy-0.8.6
     make -f Makefile.Linux
     mkdir -p /usr/local/etc/3proxy/{bin,logs,stat}
-    yes | cp -f src/3proxy /usr/local/etc/3proxy/bin/
-    systemctl stop 3proxy
-    systemctl start 3proxy
+    cp src/3proxy /usr/local/etc/3proxy/bin/
     cp ./scripts/rc.d/proxy.sh /etc/init.d/3proxy
     chmod +x /etc/init.d/3proxy
     chkconfig 3proxy on
     cd $WORKDIR
 }
 
-# Function to generate 3proxy configuration without IP whitelist
 gen_3proxy() {
     cat <<EOF
 daemon
@@ -44,36 +41,48 @@ timeouts 1 5 30 60 180 1800 15 60
 setgid 65535
 setuid 65535
 flush
-auth iponly
+auth strong
+
 users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
-$(awk -F "/" '{print "auth none\nproxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\nflush\n"}' ${WORKDATA})
+
+$(awk -F "/" '{print "auth strong\n" \
+"allow " $1 "\n" \
+"proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n" \
+"flush\n"}' ${WORKDATA})
 EOF
 }
 
-# Function to upload proxy details
+gen_proxy_file_for_user() {
+    cat >proxy.txt <<EOF
+$(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})
+EOF
+}
+
 upload_proxy() {
     local PASS=$(random)
-    echo "$(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})" > proxy.txt
-    URL=$(curl -s --upload-file proxy.txt https://transfer.sh/proxy.txt)
+    zip --password $PASS proxy.zip proxy.txt
+    URL=$(curl -s --upload-file proxy.zip https://transfer.sh/proxy.zip)
+
     echo "Proxy is ready! Format IP:PORT:LOGIN:PASS"
-    echo "Download proxy list from: ${URL}"
+    echo "Download zip archive from: ${URL}"
     echo "Password: ${PASS}"
 }
 
-# Function to generate data for proxy
 gen_data() {
     seq $FIRST_PORT $LAST_PORT | while read port; do
         echo "usr$(random)/pass$(random)/$IP4/$port/$(gen64 $IP6)"
     done
 }
 
-# Function to generate iptables rules
 gen_iptables() {
     cat <<EOF
-iptables -A INPUT -p tcp --dport 3128 -m state --state NEW -j ACCEPT
-iptables -A INPUT -p tcp --dport 1080 -m state --state NEW -j ACCEPT
-iptables -A INPUT -p tcp --dport 8080 -m state --state NEW -j ACCEPT
-$(awk -F "/" '{print "iptables -A INPUT -p tcp --dport " $4 " -s " $3 " -m state --state NEW -j ACCEPT"}' ${WORKDATA})
+$(awk -F "/" '{print "iptables -I INPUT -p tcp --dport " $4 "  -m state --state NEW -j ACCEPT"}' ${WORKDATA}) 
+EOF
+}
+
+gen_ifconfig() {
+    cat <<EOF
+$(awk -F "/" '{print "ifconfig eth0 inet6 add " $5 "/64"}' ${WORKDATA})
 EOF
 }
 
