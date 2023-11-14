@@ -115,7 +115,7 @@ LAST_PORT=$(($FIRST_PORT + $COUNT))
 # Generating data, iptables rules, 3proxy configuration
 gen_data >"$WORKDIR/data.txt"
 gen_iptables >"$WORKDIR/boot_iptables.sh"
-chmod +x "${WORKDIR}/boot_*.sh" /etc/rc.local
+chmod +x "${WORKDIR}/boot_iptables.sh" /etc/rc.local
 gen_3proxy >/usr/local/etc/3proxy/3proxy.cfg # Configuring Squid
 # (You can add your Squid configuration here)
 
