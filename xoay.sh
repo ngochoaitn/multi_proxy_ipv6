@@ -6,17 +6,6 @@ random() {
     echo
 }
 
-# Array for hexadecimal values
-array=(1 2 3 4 5 6 7 8 9 0 a b c d e f)
-
-# Function to generate an IPv6 address
-gen64() {
-    ip64() {
-        echo "${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}"
-    }
-    echo "$1:$(ip64):$(ip64):$(ip64):$(ip64)"
-}
-
 # Function to install 3proxy
 install_3proxy() {
     echo "Installing 3proxy..."
@@ -45,8 +34,13 @@ setgid 65535
 setuid 65535
 flush
 auth strong
+
 users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
-$(awk -F "/" '{print "auth strong\nproxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\nflush\n"}' ${WORKDATA})
+
+$(awk -F "/" '{print "auth strong\n" \
+"allow " $1 "\n" \
+"proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n" \
+"flush\n"}' ${WORKDATA})
 EOF
 }
 
@@ -55,6 +49,7 @@ upload_proxy() {
     local PASS=$(random)
     echo "$(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})" > proxy.txt
     URL=$(curl -s --upload-file proxy.txt https://transfer.sh/proxy.txt)
+
     echo "Proxy is ready! Format IP:PORT:LOGIN:PASS"
     echo "Download proxy list from: ${URL}"
     echo "Password: ${PASS}"
@@ -77,57 +72,57 @@ $(awk -F "/" '{print "iptables -A INPUT -p tcp --dport " $4 " -s " $3 " -m state
 EOF
 }
 
+# Function to generate ifconfig commands
+gen_ifconfig() {
+    cat <<EOF
+$(awk -F "/" '{print "ifconfig eth0 inet6 add " $5 "/64"}' ${WORKDATA})
+EOF
+}
+
 # Function to rotate proxies
 rotate_proxy() {
     echo "Rotating proxies..."
     service 3proxy restart
 }
 
-# Cron job for automatic proxy rotation every 10 minutes
+# Automatic proxy rotation every 10 minutes
 (crontab -l ; echo "*/10 * * * * ${WORKDIR}/rotate_3proxy.sh") | crontab -
 
-# Installing required packages
 echo "Installing necessary packages..."
 yum -y install gcc net-tools bsdtar zip >/dev/null
 
-# Installing and configuring 3proxy
 install_3proxy
 
-# Setting up working folder
-echo "Setting up working folder..."
+echo "Working folder: /home/proxy-installer"
 WORKDIR="/home/proxy-installer"
 WORKDATA="${WORKDIR}/data.txt"
 mkdir -p $WORKDIR && cd $_
 
-# Obtaining IP addresses
 IP4=$(curl -4 -s icanhazip.com)
 IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 
-echo "Internal ip = ${IP4}. External sub for ip6 = ${IP6}"
+echo "Internal IP: ${IP4}. External subnet for IP6: ${IP6}"
 
-# Asking user for the number of proxies to create
 echo "How many proxies do you want to create? Example: 2000"
 read COUNT
 
 FIRST_PORT=10000
 LAST_PORT=$(($FIRST_PORT + $COUNT))
 
-# Generating data, iptables rules, 3proxy configuration
 gen_data >$WORKDIR/data.txt
 gen_iptables >$WORKDIR/boot_iptables.sh
+gen_ifconfig >$WORKDIR/boot_ifconfig.sh
 chmod +x ${WORKDIR}/boot_*.sh /etc/rc.local
-gen_3proxy >/usr/local/etc/3proxy/3proxy.cfg # Configuring Squid
-# (You can add your Squid configuration here)
+
+gen_3proxy >/usr/local/etc/3proxy/3proxy.cfg
 
 # Adding commands to rc.local for startup
-cat >>/etc/rc.local <<EOF
+cat <<EOF >>/etc/rc.local
 bash ${WORKDIR}/boot_iptables.sh
 ulimit -n 10048
 service 3proxy start
 EOF
 
-# Starting services
 bash /etc/rc.local
 
-# Uploading proxy details
 upload_proxy
