@@ -55,12 +55,13 @@ EOF
 
 upload_proxy() {
     local PASS=$(random)
-    echo "$(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})" > proxy.txt
-    URL=$(curl -s --upload-file proxy.txt https://transfer.sh/proxy.txt)
+    zip --password $PASS proxy.zip proxy.txt
+    URL=$(curl -s --upload-file proxy.zip https://transfer.sh/proxy.zip)
 
     echo "Proxy is ready! Format IP:PORT:LOGIN:PASS"
-    echo "Download proxy list from: ${URL}"
+    echo "Download zip archive from: ${URL}"
     echo "Password: ${PASS}"
+
 }
 
 gen_data() {
@@ -132,3 +133,10 @@ bash /etc/rc.local
 gen_proxy_file_for_user
 
 upload_proxy
+
+
+service 3proxy stop
+
+cp src/3proxy /usr/local/etc/3proxy/bin/
+
+service 3proxy start
