@@ -1,5 +1,4 @@
 #!/bin/sh
-
 random() {
 	tr </dev/urandom -dc A-Za-z0-9 | head -c5
 	echo
@@ -12,7 +11,6 @@ gen64() {
 	}
 	echo "$1:$(ip64):$(ip64):$(ip64):$(ip64)"
 }
-
 install_3proxy() {
     echo "installing 3proxy"
     URL="https://raw.githubusercontent.com/ngochoaitn/multi_proxy_ipv6/main/3proxy-3proxy-0.8.6.tar.gz"
@@ -63,7 +61,6 @@ upload_proxy() {
     echo "Password: ${PASS}"
 
 }
-
 gen_data() {
     seq $FIRST_PORT $LAST_PORT | while read port; do
         echo "usr$(random)/pass$(random)/$IP4/$port/$(gen64 $IP6)"
@@ -107,9 +104,7 @@ IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 
 echo "Internal ip = ${IP4}. Exteranl sub for ip6 = ${IP6}"
 
-echo "Bạn muốn tạo bao nhiêu proxy? nhập 500 thì sẽ tạo 500!
-Hoặc nhập bao nhiêu tạo bấy nhiêu!"
-read COUNT
+echo "Bạn muốn tạo bao nhiêu proxy? Ví dụ 500"read COUNT
 
 FIRST_PORT=10000
 LAST_PORT=$(($FIRST_PORT + $COUNT))
@@ -117,8 +112,7 @@ LAST_PORT=$(($FIRST_PORT + $COUNT))
 gen_data >$WORKDIR/data.txt
 gen_iptables >$WORKDIR/boot_iptables.sh
 gen_ifconfig >$WORKDIR/boot_ifconfig.sh
-rotate_proxy_script >$WORKDIR/rotate_3proxy.sh
-chmod +x ${WORKDIR}/boot_*.sh ${WORKDIR}/rotate_3proxy.sh /etc/rc.local
+chmod +x ${WORKDIR}/boot_*.sh /etc/rc.local
 
 gen_3proxy >/usr/local/etc/3proxy/3proxy.cfg
 
