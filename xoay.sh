@@ -71,7 +71,7 @@ gen_data() {
 
 gen_iptables() {
     cat <<EOF
-    $(awk -F "/" '{print "iptables -I INPUT -p tcp --dport " $4 "  -m state --state NEW -j ACCEPT"}' ${WORKDATA}) 
+$(awk -F "/" '{print "iptables -I INPUT -p tcp --dport " $4 "  -m state --state NEW -j ACCEPT"}' ${WORKDATA}) 
 EOF
 }
 
@@ -84,7 +84,10 @@ EOF
 rotate_proxy_script() {
     cat <<EOF
 #!/bin/sh
-service 3proxy restart
+service 3proxy stop
+cp /usr/local/etc/3proxy/bin/3proxy /usr/local/etc/3proxy/bin/3proxy_old
+cp /usr/local/etc/3proxy/bin/3proxy_new /usr/local/etc/3proxy/bin/3proxy
+service 3proxy start
 EOF
 }
 
@@ -106,7 +109,7 @@ IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 
 echo "Internal ip = ${IP4}. External sub for ip6 = ${IP6}"
 
-echo "How many proxy do you want to create? Example 500"
+echo "How many proxies do you want to create? Example 500"
 read COUNT
 
 FIRST_PORT=10000
