@@ -1,13 +1,14 @@
-#!/bin/bash
+#!/bin/sh
 
 random() {
     tr </dev/urandom -dc A-Za-z0-9 | head -c5
     echo
 }
 
+array=(1 2 3 4 5 6 7 8 9 0 a b c d e f)
 gen64() {
     ip64() {
-        tr </dev/urandom -dc A-Fa-f0-9 | head -c4
+        echo "${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}"
     }
     echo "$1:$(ip64):$(ip64):$(ip64):$(ip64)"
 }
@@ -15,9 +16,15 @@ gen64() {
 install_3proxy() {
     echo "Installing 3proxy"
     URL="https://raw.githubusercontent.com/ngochoaitn/multi_proxy_ipv6/main/3proxy-3proxy-0.8.6.tar.gz"
-    wget -qO- $URL | tar -xzf- -C /usr/local/etc/3proxy --strip-components=1
+    wget -qO- $URL | bsdtar -xvf-
+    cd 3proxy-3proxy-0.8.6 || exit 1
+    make -f Makefile.Linux
+    mkdir -p /usr/local/etc/3proxy/{bin,logs,stat}
+    cp src/3proxy /usr/local/etc/3proxy/bin/
+    cp ./scripts/rc.d/proxy.sh /etc/init.d/3proxy
     chmod +x /etc/init.d/3proxy
     chkconfig 3proxy on
+    cd $WORKDIR || exit 1
 }
 
 gen_3proxy() {
@@ -30,41 +37,58 @@ setgid 65535
 setuid 65535
 flush
 auth strong
-$(awk -F "/" '{print "users " $1 ":CL:" $2}' ${WORKDATA})
-$(awk -F "/" '{print "auth strong\nallow " $1 "\nproxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\nflush\n"}' ${WORKDATA})
+
+users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
+
+$(awk -F "/" '{print "auth strong\n" \
+"allow " $1 "\n" \
+"proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n" \
+"flush\n"}' ${WORKDATA})
 EOF
 }
 
 gen_proxy_file_for_user() {
-    awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA} > proxy.txt
+    cat >proxy.txt <<EOF
+$(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})
+EOF
 }
 
 upload_proxy() {
     local PASS=$(random)
     zip --password $PASS proxy.zip proxy.txt
     URL=$(curl -s --upload-file proxy.zip https://transfer.sh/proxy.zip)
-    echo "Proxy is ready! Download from: ${URL}, Password: ${PASS}"
+
+    echo "Proxy is ready! Format IP:PORT:LOGIN:PASS"
+    echo "Download zip archive from: ${URL}"
+    echo "Password: ${PASS}"
 }
 
 gen_data() {
-    seq $FIRST_PORT $LAST_PORT | xargs -I {} echo "usr$(random)/pass$(random)/$IP4/{}/$(gen64 $IP6)"
+    seq $FIRST_PORT $LAST_PORT | while read port; do
+        echo "usr$(random)/pass$(random)/$IP4/$port/$(gen64 $IP6)"
+    done
 }
 
 gen_iptables() {
-    awk -F "/" '{print "iptables -I INPUT -p tcp --dport " $4 "  -m state --state NEW -j ACCEPT"}' ${WORKDATA}
+    cat <<EOF
+$(awk -F "/" '{print "iptables -I INPUT -p tcp --dport " $4 "  -m state --state NEW -j ACCEPT"}' ${WORKDATA}) 
+EOF
 }
 
 gen_ifconfig() {
-    awk -F "/" '{print "ifconfig eth0 inet6 add " $5 "/64"}' ${WORKDATA}
+    cat <<EOF
+$(awk -F "/" '{print "ifconfig eth0 inet6 add " $5 "/64"}' ${WORKDATA})
+EOF
 }
 
 rotate_proxy_script() {
-    echo "#!/bin/bash" > rotate_3proxy.sh
-    echo "service 3proxy restart" >> rotate_3proxy.sh
-    chmod +x rotate_3proxy.sh
+    cat <<EOF
+#!/bin/sh
+service 3proxy restart
+EOF
 }
 
-# Automate proxy rotation every 10 minutes
+# Automatically rotate proxy every 10 minutes
 (crontab -l ; echo "*/10 * * * * ${WORKDIR}/rotate_3proxy.sh") | crontab -
 
 echo "Installing required packages"
@@ -72,31 +96,31 @@ yum -y install gcc net-tools bsdtar zip >/dev/null
 
 install_3proxy
 
+echo "Working folder = /home/proxy-installer"
 WORKDIR="/home/proxy-installer"
 WORKDATA="${WORKDIR}/data.txt"
-mkdir -p $WORKDIR && cd $WORKDIR || exit
+mkdir $WORKDIR && cd $WORKDIR || exit 1
 
 IP4=$(curl -4 -s icanhazip.com)
 IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 
-echo "Internal IP = ${IP4}. External subnet for IP6 = ${IP6}"
+echo "Internal IP = ${IP4}. External sub for IP6 = ${IP6}"
 
-echo "Bạn muốn tạo bao nhiêu proxy? Ví dụ 5000"
+echo "How many proxies do you want to create? Example 500"
 read COUNT
 
 FIRST_PORT=10000
-LAST_PORT=$((FIRST_PORT + COUNT))
+LAST_PORT=$(($FIRST_PORT + $COUNT))
 
-gen_data > data.txt
-gen_iptables > boot_iptables.sh
-gen_ifconfig > boot_ifconfig.sh
-rotate_proxy_script
+gen_data >$WORKDIR/data.txt
+gen_iptables >$WORKDIR/boot_iptables.sh
+gen_ifconfig >$WORKDIR/boot_ifconfig.sh
+rotate_proxy_script >$WORKDIR/rotate_3proxy.sh
+chmod +x ${WORKDIR}/boot_*.sh ${WORKDIR}/rotate_3proxy.sh /etc/rc.local
 
-chmod +x boot_*.sh /etc/rc.local
+gen_3proxy >/usr/local/etc/3proxy/3proxy.cfg
 
-gen_3proxy > /usr/local/etc/3proxy/3proxy.cfg
-
-cat >> /etc/rc.local <<EOF
+cat >>/etc/rc.local <<EOF
 bash ${WORKDIR}/boot_iptables.sh
 bash ${WORKDIR}/boot_ifconfig.sh
 ulimit -n 10048
@@ -106,4 +130,5 @@ EOF
 bash /etc/rc.local
 
 gen_proxy_file_for_user
+
 upload_proxy
