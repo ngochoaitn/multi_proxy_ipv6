@@ -98,6 +98,15 @@ install_3proxy
 
 echo "Working folder = /home/proxy-installer"
 WORKDIR="/home/proxy-installer"
+
+# Remove the directory if it exists
+if [ -d "$WORKDIR" ]; then
+    echo "Removing existing directory: $WORKDIR"
+    rm -r "$WORKDIR"
+fi
+
+# Create the directory
+mkdir "$WORKDIR" && cd "$WORKDIR"
 WORKDATA="${WORKDIR}/data.txt"
 mkdir $WORKDIR && cd $WORKDIR || exit 1
 
