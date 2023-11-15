@@ -107,7 +107,8 @@ IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 
 echo "Internal ip = ${IP4}. Exteranl sub for ip6 = ${IP6}"
 
-echo "How many proxy do you want to create? Example 500"
+echo "Bạn muốn tạo bao nhiêu proxy? nhập 500 thì sẽ tạo 500!
+Hoặc nhập bao nhiêu tạo bấy nhiêu!"
 read COUNT
 
 FIRST_PORT=10000
@@ -133,10 +134,3 @@ bash /etc/rc.local
 gen_proxy_file_for_user
 
 upload_proxy
-
-
-service 3proxy stop
-
-cp src/3proxy /usr/local/etc/3proxy/bin/
-
-service 3proxy start
