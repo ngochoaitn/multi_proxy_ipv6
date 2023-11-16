@@ -23,7 +23,7 @@ allow 10.0.0.1
 
 $(awk -F "/" '{print "allow " $1 "\n" \
 "proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n" \
-"flush\n"}' /path/to/your/data.txt)
+"flush\n"}' /home/cloudfly/data.txt)
 EOF
 echo "3proxy configuration file created successfully."
 
