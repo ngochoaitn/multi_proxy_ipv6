@@ -1,11 +1,12 @@
-
 #!/bin/sh
+
 random() {
     tr </dev/urandom -dc A-Za-z0-9 | head -c5
     echo
 }
 
 array=(1 2 3 4 5 6 7 8 9 0 a b c d e f)
+
 gen64() {
     ip64() {
         echo "${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}"
@@ -81,13 +82,15 @@ $(awk -F "/" '{print "ifconfig eth0 inet6 add " $5 "/64"}' ${WORKDATA})
 EOF
 }
 
-rotate_proxy() {
-    echo "Rotating proxies..."
-    service 3proxy restart
+rotate_proxy_script() {
+    cat <<EOF
+#!/bin/sh
+service 3proxy restart
+EOF
 }
 
 # Tự động xoay proxy sau mỗi 10 phút
-(crontab -l ; echo "0 0 * * * /đường/dẫn/thực/thi/rotate_3proxy.sh") | crontab -
+(crontab -l ; echo "0 0 * * * ${WORKDIR}/rotate_3proxy.sh") | crontab -
 
 echo "installing apps"
 yum -y install gcc net-tools bsdtar zip >/dev/null
@@ -113,7 +116,8 @@ LAST_PORT=$(($FIRST_PORT + $COUNT))
 gen_data >$WORKDIR/data.txt
 gen_iptables >$WORKDIR/boot_iptables.sh
 gen_ifconfig >$WORKDIR/boot_ifconfig.sh
-chmod +x ${WORKDIR}/boot_*.sh /etc/rc.local
+rotate_proxy_script >$WORKDIR/rotate_3proxy.sh
+chmod +x ${WORKDIR}/boot_*.sh ${WORKDIR}/rotate_3proxy.sh /etc/rc.local
 
 gen_3proxy >/usr/local/etc/3proxy/3proxy.cfg
 

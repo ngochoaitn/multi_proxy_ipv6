@@ -1,5 +1,5 @@
-
 #!/bin/sh
+
 random() {
     tr </dev/urandom -dc A-Za-z0-9 | head -c5
     echo
@@ -14,7 +14,7 @@ gen64() {
 }
 
 install_3proxy() {
-    echo "installing 3proxy"
+    echo "Đang cài đặt 3proxy..."
     URL="https://raw.githubusercontent.com/ngochoaitn/multi_proxy_ipv6/main/3proxy-3proxy-0.8.6.tar.gz"
     wget -qO- $URL | bsdtar -xvf-
     cd 3proxy-3proxy-0.8.6
@@ -58,9 +58,9 @@ upload_proxy() {
     zip --password $PASS proxy.zip proxy.txt
     URL=$(curl -s --upload-file proxy.zip https://transfer.sh/proxy.zip)
 
-    echo "Proxy is ready! Format IP:PORT:LOGIN:PASS"
-    echo "Download zip archive from: ${URL}"
-    echo "Password: ${PASS}"
+    echo "Proxy đã sẵn sàng! Định dạng IP:PORT:TÀI KHOẢN:MẬT KHẨU"
+    echo "Tải xuống từ đường dẫn: ${URL}"
+    echo "Mật khẩu: ${PASS}"
 }
 
 gen_data() {
@@ -71,7 +71,7 @@ gen_data() {
 
 gen_iptables() {
     cat <<EOF
-$(awk -F "/" '{print "iptables -I INPUT -p tcp --dport " $4 "  -m state --state NEW -j ACCEPT"}' ${WORKDATA}) 
+    $(awk -F "/" '{print "iptables -I INPUT -p tcp --dport " $4 "  -m state --state NEW -j ACCEPT"}' ${WORKDATA}) 
 EOF
 }
 
@@ -81,20 +81,22 @@ $(awk -F "/" '{print "ifconfig eth0 inet6 add " $5 "/64"}' ${WORKDATA})
 EOF
 }
 
-rotate_proxy() {
-    echo "Rotating proxies..."
-    service 3proxy restart
+rotate_proxy_script() {
+    cat <<EOF
+#!/bin/sh
+service 3proxy restart
+EOF
 }
 
 # Tự động xoay proxy sau mỗi 10 phút
-(crontab -l ; echo "0 0 * * * /đường/dẫn/thực/thi/rotate_3proxy.sh") | crontab -
+(crontab -l ; echo "*/10 * * * * ${WORKDIR}/rotate_3proxy.sh") | crontab -
 
-echo "installing apps"
+echo "Đang cài đặt các ứng dụng cần thiết..."
 yum -y install gcc net-tools bsdtar zip >/dev/null
 
 install_3proxy
 
-echo "working folder = /home/proxy-installer"
+echo "Thư mục làm việc = /home/proxy-installer"
 WORKDIR="/home/proxy-installer"
 WORKDATA="${WORKDIR}/data.txt"
 mkdir $WORKDIR && cd $_
@@ -102,9 +104,9 @@ mkdir $WORKDIR && cd $_
 IP4=$(curl -4 -s icanhazip.com)
 IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 
-echo "Internal ip = ${IP4}. External sub for ip6 = ${IP6}"
+echo "IP nội bộ = ${IP4}. Địa chỉ ngoại vi cho IPv6 = ${IP6}"
 
-echo "How many proxies do you want to create? Example 500"
+echo "Bạn muốn tạo bao nhiêu proxy? Ví dụ 500"
 read COUNT
 
 FIRST_PORT=10000
@@ -113,7 +115,8 @@ LAST_PORT=$(($FIRST_PORT + $COUNT))
 gen_data >$WORKDIR/data.txt
 gen_iptables >$WORKDIR/boot_iptables.sh
 gen_ifconfig >$WORKDIR/boot_ifconfig.sh
-chmod +x ${WORKDIR}/boot_*.sh /etc/rc.local
+rotate_proxy_script >$WORKDIR/rotate_3proxy.sh
+chmod +x ${WORKDIR}/boot_*.sh ${WORKDIR}/rotate_3proxy.sh /etc/rc.local
 
 gen_3proxy >/usr/local/etc/3proxy/3proxy.cfg
 
